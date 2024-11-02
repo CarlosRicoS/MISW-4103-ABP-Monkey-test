@@ -3,3 +3,5 @@ cypress/screenshots
 cypress/videos
 node_modules/
 results/
+seeds-results/*
+Entregable/
