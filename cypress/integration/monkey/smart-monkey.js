@@ -7,8 +7,8 @@ const url = Cypress.config("baseUrl") || "https://uniandes.edu.co/";
 const appName = Cypress.env("appName") || "your app";
 const events = Cypress.env("events") || 100;
 const delay = Cypress.env("delay") || 100;
+const isDebug = Cypress.env("isDebug") || false;
 var seed = Cypress.env("seed");
-
 const num_categories = 7;
 
 const pct_clicks = Cypress.env("pctClicks") || 12;
@@ -46,7 +46,7 @@ var random = jsf32(0xf1ae533d, seed, seed, seed);
 function getRandomInt(min, max) {
   min = Math.ceil(min);
   max = Math.floor(max);
-  return Math.floor(random() * (max - min)) + min;
+  return Math.floor(random() * (max - min + 1)) + min;
 }
 
 function fullPath(el) {
@@ -93,17 +93,23 @@ var evtIndex = 1;
 var focused = false;
 
 function randClick() {
+  logNextAction("randClick");
+
   let randX = getRandomInt(curX, viewportWidth);
   let randY = getRandomInt(curY, viewportHeight);
 
   cy.window().then((win) => {
     let info = "";
     let element = win.document.elementFromPoint(randX, randY);
-    if (!!element) {
+    // logNextAction(element.);
+
+    if (element) {
       //Use cypress selector if any fits
-      if (!!element.id) {
+      if (element.id && !Cypress.dom.isHidden(element)) {
+        logNextAction(JSON.stringify(element));
         //boolean that indicates if the element has a non-empty id
-        cy.get(`#${element.id}`).click();
+        // cy.wrap(element).click();
+        cy.get(`#${element.id}`).click({ force: true });
         info = `${element.tagName} with id: ${element.id}`;
       } else {
         /*
@@ -143,6 +149,8 @@ function randClick() {
 }
 
 function randDClick() {
+  logNextAction("randDClick");
+
   let randX = getRandomInt(curX, viewportWidth);
   let randY = getRandomInt(curY, viewportHeight);
 
@@ -195,6 +203,8 @@ function randDClick() {
 }
 
 function randRClick() {
+  logNextAction("randRClick");
+
   let randX = getRandomInt(curX, viewportWidth);
   let randY = getRandomInt(curY, viewportHeight);
 
@@ -246,6 +256,8 @@ function randRClick() {
 }
 
 function randHover() {
+  logNextAction("randHover");
+
   let randX = getRandomInt(curX, viewportWidth);
   let randY = getRandomInt(curY, viewportHeight);
 
@@ -295,6 +307,8 @@ function randHover() {
 }
 
 function avPag() {
+  logNextAction("avPag");
+
   let info = "";
   let prev = curY.valueOf();
   if (curPageMaxY - curY >= viewportHeight) {
@@ -314,6 +328,8 @@ function avPag() {
 }
 
 function rePag() {
+  logNextAction("rePag");
+
   let info = "";
   let prev = curY.valueOf();
   if (curY === 0) {
@@ -333,6 +349,8 @@ function rePag() {
 }
 
 function horizontalScrollFw() {
+  logNextAction("horizontalScrollFw");
+
   let info = "";
   let prev = curX.valueOf();
   cy.document().then((doc) => {
@@ -362,6 +380,8 @@ function horizontalScrollFw() {
 }
 
 function horizontalScrollBk() {
+  logNextAction("horizontalScrollBk");
+
   let info = "";
   let prev = curX.valueOf();
   cy.document().then((doc) => {
@@ -387,6 +407,8 @@ function horizontalScrollBk() {
 }
 
 function reload() {
+  logNextAction("reload");
+
   cy.reload();
   focused = false;
   cy.task("logCommand", {
@@ -396,6 +418,8 @@ function reload() {
 }
 
 function enter() {
+  logNextAction("enter");
+
   let info = "";
   if (focused) {
     cy.focused().type("{enter}");
@@ -408,20 +432,30 @@ function enter() {
 }
 
 function typeCharKey() {
+  logNextAction("typeCharKey");
+
   let info = "";
   let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   let type = chars.charAt(getRandomInt(0, chars.length - 1));
-  if (focused) {
-    cy.focused().type(type);
-    info = `Pressed the ${type} key on the element in focus`;
-  } else {
-    cy.get("body").type(type);
-    info = "INVALID. No element is in focus";
-  }
-  cy.task("logCommand", { funtype: "Key press", info: info });
+  // if (focused) {
+  cy.window().then((win) => {
+    const focusedElement = win.document.activeElement;
+    logNextAction(focusedElement.tagName);
+
+    if (focusedElement && focusedElement.tagName === "INPUT") {
+      cy.focused().type(type);
+      info = `Pressed the ${type} key on the element in focus`;
+    } else {
+      cy.get("body").type(type);
+      info = "INVALID. No element is in focus";
+    }
+    cy.task("logCommand", { funtype: "Key press", info: info });
+  });
 }
 
 function spkeypress() {
+  logNextAction("spkeypress");
+
   let info = "";
   const specialKeys = [
     "{{}",
@@ -453,6 +487,8 @@ function spkeypress() {
 }
 
 function changeViewport() {
+  logNextAction("changeViewport");
+
   const viewports = [
     "ipad-2",
     "ipad-mini",
@@ -504,6 +540,7 @@ function changeViewport() {
 }
 
 function navBack() {
+  logNextAction("navBack");
   cy.url().then((path) => {
     let info = "";
     if (url !== path) {
@@ -515,6 +552,7 @@ function navBack() {
 }
 
 function navForward() {
+  logNextAction("navForward");
   cy.go(1);
   cy.task("logCommand", {
     funtype: "Page navigation (forward)",
@@ -523,24 +561,35 @@ function navForward() {
 }
 
 function tab() {
+  logNextAction("tab");
   let info = "";
-  if (focused) {
-    cy.focused().tab().focus();
-    info = "Tabbed to the next element after the one in focus";
-  } else {
-    cy.get("body").tab().focus();
-    info = "Tabbed into the first focusable element of the document";
-  }
-  focused = true;
-  cy.task("logCommand", { funtype: "Selector focus (tab)", info: info });
+  cy.window().then((win) => {
+    const focusedElement = win.document.activeElement;
+    if (focusedElement && focusedElement.tagName === "INPUT") {
+      cy.focused().tab().focus();
+      info = "Tabbed to the next element after the one in focus";
+    } else {
+      cy.get("body").tab().focus();
+      info = "Tabbed into the first focusable element of the document";
+    }
+    focused = true;
+    cy.task("logCommand", { funtype: "Selector focus (tab)", info: info });
+  });
 }
 
 function clickRandAnchor() {
+  logNextAction("clickRandAnchor");
+
   cy.window().then((win) => {
     let $links = win.document.getElementsByTagName("a");
     let info = "";
-    if ($links.length > 0) {
-      let randomLink = $links.item(getRandomInt(0, $links.length));
+    if ($links && $links.length > 0) {
+      let randomLink = $links.item(getRandomInt(0, $links.length - 1));
+      if (!randomLink) {
+        info = `Link is hidden`;
+        cy.task("logCommand", { funtype: "Action: click anchor", info: info });
+        return;
+      }
       if (!Cypress.dom.isHidden(randomLink)) {
         cy.wrap(randomLink).click({ force: true });
         info = `Clicked link to: ${randomLink.href}`;
@@ -551,36 +600,44 @@ function clickRandAnchor() {
 }
 
 function clickRandButton() {
+  logNextAction("clickRandButton");
+
   cy.window().then((win) => {
     let $buttons = win.document.getElementsByTagName("button");
     let info = "";
-    if ($buttons.length > 0) {
-      let randomButton = $buttons.item(getRandomInt(0, $buttons.length));
-      if (!Cypress.dom.isHidden(randomButton)) {
+    if ($buttons && $buttons.length > 0) {
+      let randomButton = $buttons.item(getRandomInt(0, $buttons.length - 1));
+      if (randomButton && !Cypress.dom.isHidden(randomButton)) {
         cy.wrap(randomButton).click({ force: true });
         info = `Clicked button ${
           randomButton.textContent
         } with jsPath ${fullPath(randomButton)}`;
-      } else info = `Button ${randomButton.textContent} is hidden`;
+      } else info = `Button is hidden`;
     } else info = "INVALID. There are no buttons in the current page";
     cy.task("logCommand", { funtype: "Action: click button", info: info });
   });
 }
 
 function fillInput() {
+  logNextAction("fillInput");
+
   //Or fill form
   cy.window().then((win) => {
     let $inputs = win.document.getElementsByTagName("input");
     let info = "";
     if ($inputs.length > 0) {
-      var inp = $inputs.item(getRandomInt(0, $inputs.length));
+      var inp = $inputs.item(getRandomInt(0, $inputs.length - 1));
+
       //console.log(inp);
       //console.log(inp.getAttribute("type"));
-      if (!Cypress.dom.isHidden(inp)) {
+      if (inp && !Cypress.dom.isHidden(inp)) {
+        logNextAction(inp.getAttribute("type"));
         focused = true;
         if (inp.getAttribute("type") == "email") {
-          let type = faker.internet.email;
-          cy.wrap(inp).type(faker.internet.email);
+          let type = faker.internet.email();
+          logNextAction(type);
+
+          cy.wrap(inp).type(faker.internet.email());
           info = `Input ${inp.id} was filled with ${type}`;
         } else if (
           inp.getAttribute("type") == "button" ||
@@ -591,54 +648,63 @@ function fillInput() {
           cy.wrap(inp).click();
           info = `Input ${inp.id} of type ${inp.getAttribute()} was clicked`;
         } else if (inp.getAttribute("type") == "date") {
-          let type = faker.date;
-          cy.wrap(inp).type(faker.date);
+          let type = faker.date();
+          cy.wrap(inp).type(faker.date());
           info = `Input ${inp.id} was filled with ${type}`;
         } else if (inp.getAttribute("type") == "tel") {
-          let type = faker.phone;
+          let type = faker.phone();
           cy.wrap(inp).type(type);
           info = `Input ${inp.id} was filled with ${type}`;
         } else if (inp.getAttribute("type") == "url") {
-          let type = faker.internet.url;
+          let type = faker.internet.url();
           cy.wrap(inp).type(type);
           info = `Input ${inp.id} was filled with ${type}`;
         } else if (inp.getAttribute("type") == "number") {
-          let type = faker.random.number;
+          let type = faker.random.number();
           cy.wrap(inp).type(type);
           info = `Input ${inp.id} was filled with ${type}`;
         } else if (
           inp.getAttribute("type") == "text" ||
           inp.getAttribute("type") == "password"
         ) {
-          let type = faker.random.alphaNumeric;
+          let type = faker.random.alphaNumeric();
           cy.wrap(inp).type(type);
           info = `Input ${inp.id} was filled with ${type}`;
         } else {
           focused = false;
           info = `Input ${inp.id} is of type ${inp.getAttribute("type")}`;
         }
-      } else info = `Input ${inp.id} is hidden`;
+      } else info = `Input is hidden`;
     } else info = "INVALID. There are no input elements in the current page";
     console.log(info);
     cy.task("logCommand", { funtype: "Action: click anchor", info: info });
   });
 }
 function clearInput() {
+  logNextAction("clearInput");
+
   cy.window().then((win) => {
     let info = "";
-    let inputs = win.document.getElementsByTagName("input");
+    const inputs = Array.from(
+      win.document.getElementsByTagName("input")
+    ).filter((input) => input.disabled);
     if (inputs.length > 0) {
-      var inp = inputs.item(getRandomInt(0, inputs.length));
-      if (!Cypress.dom.isHidden(inp)) {
-        cy.wrap(inp).clear();
+      var inp = inputs.item(getRandomInt(0, inputs.length - 1));
+      if (inp && !Cypress.dom.isHidden(inp)) {
+        logNextAction("clearInput");
+        inp.Is;
+        cy.wrap(inp).should("not.be.disabled").clear();
+
         focused = true;
         info = `Cleared input ${inp.id}`;
-      } else info = `Input ${inp.id} is hidden`;
+      } else info = `Input is hidden`;
     } else info = "INVALID. There are no input elements in the current page";
     cy.task("logCommand", { funtype: "Action: click anchor", info: info });
   });
 }
 function clearLocalStorage() {
+  logNextAction("clearLocalStorage");
+
   cy.clearLocalStorage();
   cy.task("logCommand", {
     funtype: "Chaos: Clear local storage",
@@ -646,6 +712,8 @@ function clearLocalStorage() {
   });
 }
 function clearCookies() {
+  logNextAction("clearCookies");
+
   cy.clearCookies();
   cy.task("logCommand", {
     funtype: "Chaos: Clear cookies",
@@ -653,21 +721,31 @@ function clearCookies() {
   });
 }
 function login() {
+  logNextAction("login");
+
   cy.window().then((win) => {
     let info = "";
     let userName = win.document.getElementById("identification");
     let password = win.document.getElementById("password");
     let login = win.document.getElementById("ember5");
+    if (!userName || !password || !login) {
+      info = `Login form is hidden`;
+      cy.task("logCommand", { funtype: "Action: login", info: info });
+      return;
+    }
     if (
       !Cypress.dom.isHidden(userName) &&
       !Cypress.dom.isHidden(password) &&
       !Cypress.dom.isHidden(login)
     ) {
+      logNextAction("login- true");
+      cy.wrap(userName).clear();
       cy.wrap(userName).type("jamie@example.com", { force: true });
+      cy.wrap(password).clear();
       cy.wrap(password).type("}WTdx6}h}ZLJTz4", { force: true });
       cy.wrap(login).click({ force: true });
       info = `Filled input ${userName.id}`;
-    } else info = `Login form ${userName.id} is hidden`;
+    } else info = `Login form is hidden`;
     cy.task("logCommand", { funtype: "Action: login", info: info });
   });
 }
@@ -675,7 +753,7 @@ function login() {
 //var screenshotIndex = 0;
 
 function randomEvent() {
-  let typeIndex = getRandomInt(0, pending_events.length);
+  let typeIndex = getRandomInt(0, pending_events.length - 1);
   if (pending_events[typeIndex] > 0) {
     //screenshotIndex += 1;
     //cy.screenshot('smart/'+screenshotIndex+"-"+ getEvtType(typeIndex)+"-before");
@@ -688,6 +766,13 @@ function randomEvent() {
     functions.splice(typeIndex, 1);
     pending_events.splice(typeIndex, 1);
   }
+}
+
+function logNextAction(actionName) {
+  if (!isDebug) return;
+  cy.task("logCommand", {
+    funtype: `---->>>Next Action: ${actionName}`,
+  });
 }
 
 function getEvtType(i) {
@@ -706,14 +791,16 @@ var pending_events = [, , , , , , ,];
 //Aggregate in a matrix-like constant
 const functions = [
   // [randClick, randDClick, randRClick],
-  [randClick, randRClick],
-  [horizontalScrollBk, horizontalScrollFw, avPag, rePag],
+  [login, randClick],
+  // [horizontalScrollBk, horizontalScrollFw, avPag, rePag],
+  [horizontalScrollBk, horizontalScrollFw],
   [randHover, tab],
   [typeCharKey],
-  [spkeypress, enter],
+  // [spkeypress, enter],
+  [spkeypress],
   [reload, navBack, navForward],
   [changeViewport, clearCookies, clearLocalStorage],
-  [fillInput, clearInput, login, clickRandAnchor, clickRandButton],
+  [fillInput, clearInput, clickRandButton, clickRandAnchor],
 ];
 
 describe(`${appName} under smarter monkeys`, function () {
